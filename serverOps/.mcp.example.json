@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "serverops": {
+      "command": "uv",
+      "args": ["run", "--directory", ".", "-m", "serverops"],
+      "env": {
+        "SERVEROPS_CONFIG": "./config/servers.yaml",
+        "SERVEROPS_SECRETS": "./.env"
+      }
+    }
+  }
+}

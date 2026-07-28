@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "serverops"
+version = "0.1.0"
+description = "MCP server for operating on multiple remote services (SSH, Docker, Kubernetes, databases)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "serverOps contributors" }]
+keywords = ["mcp", "ssh", "docker", "kubernetes", "database", "ops", "claude"]
+dependencies = [
+    "fastmcp>=3.0.0",
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+    "anyio>=4.0",
+    "structlog>=24.0",
+]
+
+[project.optional-dependencies]
+# Each connector's heavy library is an optional extra so installs stay lean (YAGNI).
+# Connectors import their library lazily; an uninstalled extra only errors when used.
+ssh = ["asyncssh>=2.14"]
+container = ["aiodocker>=0.23"]
+k8s = ["kubernetes>=29.0"]
+db = [
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
+    "aiomysql>=0.2",
+    "aiosqlite>=0.20",
+    "redis>=5.0",
+    "clickhouse-connect>=0.7",
+]
+all = [
+    "asyncssh>=2.14",
+    "aiodocker>=0.23",
+    "kubernetes>=29.0",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
+    "aiomysql>=0.2",
+    "aiosqlite>=0.20",
+    "redis>=5.0",
+    "clickhouse-connect>=0.7",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+serverops = "serverops.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

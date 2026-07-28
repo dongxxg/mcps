@@ -1,0 +1,77 @@
+# serverOps connection profiles.
+# Copy to ~/.serverops/config.yaml or point SERVEROPS_CONFIG at a copy.
+# Credentials live in environment variables and are pulled in via ${VAR}
+# interpolation (or `password_env: VARNAME` for SSH) — never inline.
+
+# Global server behavior.
+settings:
+  read_only: false                 # global kill-switch: block ALL mutating tools
+  ssh_command_denylist:            # SSH commands matching these (regex) are refused
+    - '\brm\s+-rf\s+/(?:\s|$)'
+    - '\bmkfs\b'
+    - '\bdd\s+.*of=/dev/'
+    - '\bshutdown\b'
+    - '\breboot\b'
+    - ':\(\)\s*\{\s*:\|:&\s*\}\s*;\s*:'   # fork bomb
+    - '>\s*/dev/sd[a-z]'
+  ssh_command_allowlist: []        # if non-empty, ONLY listed commands are allowed
+  # audit_log: ~/.serverops/audit.jsonl   # set a path to enable JSONL audit logging
+
+# Named connections. Each tool takes a `connection` name from here.
+connections:
+  # --- SSH host ---
+  web1:
+    kind: ssh
+    description: "frontend web host"
+    host: web1.example.com
+    port: 22
+    user: deploy
+    key_path: ~/.ssh/id_ed25519
+    # password_env: WEB1_SSH_PASSWORD   # alternative to key auth
+    known_hosts: strict             # strict | accept-new | ignore (ignore is insecure)
+    # read_only: false
+
+  # --- Docker daemon (local socket or remote TCP+TLS) ---
+  docker-local:
+    kind: docker
+    description: "local docker daemon"
+    url: unix:///var/run/docker.sock
+    # url: tcp://docker.host:2376
+    # tls_verify: true
+    # cert_path: ~/.docker
+
+  # --- Kubernetes cluster ---
+  prod-cluster:
+    kind: kubernetes
+    description: "production cluster"
+    kubeconfig: ~/.kube/config
+    context: prod
+    namespace: default
+    # in_cluster: true              # set true when running inside a pod
+
+  # --- Databases (url pulled from env so the secret never lives in this file) ---
+  analytics-db:
+    kind: postgres
+    description: "analytics warehouse (read replica)"
+    url: "${ANALYTICS_DB_URL}"
+    read_only: true                 # enforce read-only even on db_execute
+
+  cache:
+    kind: redis
+    description: "session cache"
+    url: "${REDIS_URL}"
+
+  # ClickHouse — query-only by design: db_execute is rejected, and db_query
+  # accepts only SELECT/SHOW/DESCRIBE-style statements (no writes, ever).
+  #   clickhouse://           -> HTTP,  port 8123 (default)
+  #   clickhouse+https://     -> HTTPS, port 8443   (also: clickhouses://)
+  # clickhouse://user:pass@host:8123/db(HTTP,默认 8123)或 clickhouse+https://...:8443/db(HTTPS)
+  olap:
+    kind: clickhouse
+    description: "OLAP analytics warehouse (read-only access)"
+    url: "${CLICKHOUSE_URL}"
+
+  local-sqlite:
+    kind: sqlite
+    description: "local scratch database"
+    url: "sqlite:///./local.db"

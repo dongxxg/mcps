@@ -1,0 +1,4 @@
+# MCP launcher config + secrets file — never commit real credentials.
+.mcp.json
+.env
+__pycache__/

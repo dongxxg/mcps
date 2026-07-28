@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# virtual envs
+.venv/
+venv/
+env/
+
+# test / tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# editor / os
+.idea/
+.vscode/
+.DS_Store
+
+# serverOps runtime (never commit real connection configs or audit logs)
+config/servers.yaml
+config/servers.local.yaml
+*.local.yaml
+audit.log
+audit.jsonl
+.env
