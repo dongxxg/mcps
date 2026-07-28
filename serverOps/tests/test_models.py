@@ -30,7 +30,7 @@ def test_ssh_profile_rejects_unknown_field() -> None:
 def test_db_profiles_carry_url() -> None:
     p = PostgresProfile(url="postgresql://u:p@h/db")
     assert p.kind == "postgres"
-    assert frozenset({"postgres", "mysql", "sqlite", "redis", "clickhouse"}) == DATABASE_KINDS
+    assert frozenset({"postgres", "mysql", "sqlite", "redis", "clickhouse", "elasticsearch"}) == DATABASE_KINDS
 
 
 def test_discriminated_union_routes_by_kind() -> None:

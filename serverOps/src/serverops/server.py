@@ -7,7 +7,7 @@ from fastmcp import FastMCP
 from .config import ConfigError, load_config
 from .models import ServerOpsConfig
 from .registry import ConnectorRegistry
-from .tools import container_tools, db_tools, meta, ssh_tools
+from .tools import container_tools, db_tools, es_tools, meta, ssh_tools
 
 
 def create_app(registry: ConnectorRegistry, auth=None) -> FastMCP:
@@ -20,6 +20,7 @@ def create_app(registry: ConnectorRegistry, auth=None) -> FastMCP:
     meta.register(mcp, registry)
     ssh_tools.register(mcp, registry)
     db_tools.register(mcp, registry)
+    es_tools.register(mcp, registry)
     container_tools.register(mcp, registry)
     return mcp
 

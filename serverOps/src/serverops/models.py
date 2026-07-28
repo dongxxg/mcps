@@ -98,6 +98,12 @@ class ClickHouseProfile(_DatabaseProfileBase):
     kind: Literal["clickhouse"] = "clickhouse"
 
 
+class ElasticsearchProfile(_DatabaseProfileBase):
+    #: Read-only by design: only search, get, and index-listing tools are exposed.
+    #: No write/delete/update operations are ever provided.
+    kind: Literal["elasticsearch"] = "elasticsearch"
+
+
 ConnectionProfile = Annotated[
     SSHProfile
     | DockerProfile
@@ -106,7 +112,8 @@ ConnectionProfile = Annotated[
     | MySQLProfile
     | SQLiteProfile
     | RedisProfile
-    | ClickHouseProfile,
+    | ClickHouseProfile
+    | ElasticsearchProfile,
     Field(discriminator="kind"),
 ]
 
@@ -115,8 +122,10 @@ ConnectionProfile = Annotated[
 # Settings + top-level config
 # ---------------------------------------------------------------------------
 
-#: All database discriminator values.
-DATABASE_KINDS: frozenset[str] = frozenset({"postgres", "mysql", "sqlite", "redis", "clickhouse"})
+#: All database/backend discriminator values.
+DATABASE_KINDS: frozenset[str] = frozenset(
+    {"postgres", "mysql", "sqlite", "redis", "clickhouse", "elasticsearch"}
+)
 
 
 class Settings(BaseModel):

@@ -71,6 +71,17 @@ connections:
     description: "OLAP analytics warehouse (read-only access)"
     url: "${CLICKHOUSE_URL}"
 
+  # --- Elasticsearch (query-only) ---
+  # es_search / es_get / es_indices are the only available tools — no writes.
+  #   http://           -> HTTP,  port 9200 (default)
+  #   https://          -> HTTPS, port 9243 (default)
+  # elasticsearch://user:pass@es.example.com:9200
+  logs-es:
+    kind: elasticsearch
+    description: "log search cluster"
+    url: "${ES_URL}"
+    read_only: true                 # enforced: only query tools exist
+
   local-sqlite:
     kind: sqlite
     description: "local scratch database"

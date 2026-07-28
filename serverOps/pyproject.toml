@@ -33,6 +33,7 @@ db = [
     "redis>=5.0",
     "clickhouse-connect>=0.7",
 ]
+elasticsearch = ["elasticsearch>=8.0"]
 all = [
     "asyncssh>=2.14",
     "aiodocker>=0.23",
@@ -43,6 +44,7 @@ all = [
     "aiosqlite>=0.20",
     "redis>=5.0",
     "clickhouse-connect>=0.7",
+    "elasticsearch>=8.0",
 ]
 dev = [
     "pytest>=8.0",

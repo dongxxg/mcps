@@ -24,6 +24,7 @@ _KIND_TO_MODULE: dict[str, str] = {
     "sqlite": "serverops.connectors.database",
     "redis": "serverops.connectors.database",
     "clickhouse": "serverops.connectors.database",
+    "elasticsearch": "serverops.connectors.elasticsearch",
 }
 
 #: friendly install hint shown when an optional extra is missing.
@@ -36,6 +37,7 @@ _INSTALL_HINT: dict[str, str] = {
     "sqlite": "pip install 'serverops[db]' (provides sqlalchemy + aiosqlite)",
     "redis": "pip install 'serverops[db]' (provides redis)",
     "clickhouse": "pip install 'serverops[db]' (provides clickhouse-connect)",
+    "elasticsearch": "pip install 'serverops[elasticsearch]' (provides elasticsearch)",
 }
 
 
