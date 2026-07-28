@@ -1,0 +1,49 @@
+# .framework-manifest — framework file inventory
+# Everything NOT listed here is project territory (never touched by upgrades)
+# Format: d <path> = directory (all contents framework-owned)
+#         f <path> = single file
+#         k <path> = key file (checksum-critical, for integrity verification)
+#         e <path> = excluded file (in source, never distributed to target)
+#         r <path> = removed path (cleanup file or directory from target projects during install)
+
+d .claude/agents
+d .claude/backends
+d .claude/ci-templates
+d .claude/hooks
+d .claude/rules
+d .claude/reference
+d .claude/skills/daily-report
+d .claude/skills/devops
+d .claude/skills/evidence-check
+d .claude/skills/issue-board
+d .claude/skills/memory-cli
+d .claude/skills/pua-debugging
+d .claude/skills/rd-auto
+d .claude/skills/simplify
+d .claude/skills/skillhub
+d .claude/skills/template-fill
+d .claude/skills/upgrade-harness
+d .claude/templates
+d .claude/tools/scripts
+d .claude/workflows
+
+f .claude/settings.json
+f .harness/.harness-version
+f .framework-manifest
+f harness
+
+e .claude/hooks/git/pre-receive
+e .claude/skills/daily-report/scripts/__tests__
+
+r .claude/commands/rd
+r .claude/.framework-edit
+r .claude/.harness-version
+r .claude/hooks/githooks
+r .claude/hooks/claude-hooks
+r .claude/skills/im
+r .claude/skills/k8s
+r .claude/skills/fan-out
+r .claude/skills/systematic-debugging
+r .claude/skills/simplify-code
+r .claude/skills/daily-report-legacy
+
