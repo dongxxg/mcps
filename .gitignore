@@ -47,6 +47,7 @@ outputs/
 .harness/.setup-*.log
 .harness/.worktrees/
 .harness-projects
+.playwright-mcp/
 
 # 业务仓库专有：本地框架安装状态（每个开发者各自跟踪，不跨开发者同步）
 .harness/.harness-version
