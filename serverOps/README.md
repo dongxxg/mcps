@@ -32,6 +32,7 @@ SSH 主机、Docker 守护进程、Kubernetes 集群,以及数据库(PostgreSQL 
 - [快速部署(一键)](#快速部署一键)
 - [配置](#配置)
 - [运行](#运行)
+- [HTTP 部署(供多端共用)](#http-部署供多端共用)
 - [接入客户端](#接入客户端)
 - [工具参考(含示例)](#工具参考含示例)
   - [元信息工具](#元信息工具)
@@ -281,6 +282,201 @@ python -m serverops --transport http
 
 ---
 
+## HTTP 部署(供多端共用)
+
+stdio 模式下,每个客户端都要各自起一份 serverOps 进程;HTTP(streamable)模式则把
+serverOps 跑成**一个常驻服务**,所有客户端共用同一个端点 + 同一个 Bearer Token ——
+适合团队共用、远程访问,以及多客户端(Claude Code / Desktop / Cursor / Continue / 自研脚本)接入。
+
+### 启动
+
+```bash
+# 1) 生成一个高强度共享 Token
+export SERVEROPS_HTTP_TOKEN="$(openssl rand -hex 32)"
+export SERVEROPS_CONFIG=/opt/serverOps/config/servers.yaml
+export SERVEROPS_SECRETS=/opt/serverOps/.env
+
+# 2) 启动(生产环境只绑 127.0.0.1,对外暴露交给反向代理)
+python -m serverops --transport http --host 127.0.0.1 --port 8000
+# MCP 端点: http://127.0.0.1:8000/mcp
+# 健康检查: http://127.0.0.1:8000/health  (免鉴权,只返回 {"status":"ok"})
+```
+
+所有参数均可由环境变量覆盖(见[运行](#运行))。`SERVEROPS_HTTP_TOKEN` 留空时,
+HTTP 传输**完全无鉴权** —— 仅适合受信任的本地网络。
+
+> Token 校验用 `hmac.compare_digest` 恒定时间比较(`http_auth.py`)。
+> 需要按实例 / 按用途区分 Token 时,用 `SERVEROPS_HTTP_TOKEN_ENV` 指定实际读取的变量名。
+
+### 守护进程(长驻)
+
+**Linux(systemd):**
+
+```ini
+# /etc/systemd/system/serverops-mcp.service
+[Unit]
+Description=serverOps MCP (HTTP)
+After=network.target
+
+[Service]
+Type=simple
+User=serverops
+WorkingDirectory=/opt/serverOps
+Environment=SERVEROPS_CONFIG=/opt/serverOps/config/servers.yaml
+Environment=SERVEROPS_SECRETS=/opt/serverOps/.env
+Environment=SERVEROPS_HTTP_TOKEN=__填上面生成的 Token__
+ExecStart=/opt/serverOps/.venv/bin/python -m serverops --transport http --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now serverops-mcp
+```
+
+**Windows(NSSM 注册为服务):**
+
+```powershell
+nssm install serverops "C:\serverOps\.venv\Scripts\python.exe" "-m serverops --transport http --host 127.0.0.1 --port 8000"
+nssm set serverops AppDirectory C:\serverOps
+nssm set serverops AppEnvironmentExtra SERVEROPS_CONFIG=C:\serverOps\config\servers.yaml SERVEROPS_SECRETS=C:\serverOps\.env SERVEROPS_HTTP_TOKEN=__Token__
+nssm start serverops
+```
+
+### 反向代理 + TLS
+
+Bearer Token 走明文 HTTP 会被嗅探,暴露到公网**必须**套 HTTPS。MCP 的 streamable HTTP
+含 SSE 长连接(GET),nginx 要关闭缓冲、拉长读写超时,否则长连接会被提前掐断:
+
+```nginx
+# /etc/nginx/sites-available/mcp.conf
+server {
+    listen 443 ssl http2;
+    server_name mcp.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/mcp.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mcp.example.com/privkey.pem;
+
+    # 可选:只放行已知客户端 IP
+    # allow 203.0.113.10; deny all;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # ⚠️ MCP streamable HTTP = POST(JSON-RPC)+ GET(SSE)长连接
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+}
+
+server {  # 80 强制跳 TLS
+    listen 80;
+    server_name mcp.example.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+```bash
+sudo certbot --nginx -d mcp.example.com   # 自动签发 Let's Encrypt 证书
+```
+
+### 各客户端接入
+
+所有客户端填**同一个 URL + 同一个 Token**即可,无需各自启动 server 进程。
+
+**Claude Code(命令行):**
+
+```bash
+claude mcp add --transport http serverops https://mcp.example.com/mcp \
+  --header "Authorization: Bearer <TOKEN>"
+```
+
+**Claude Desktop**(`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "serverops": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer <TOKEN>" }
+    }
+  }
+}
+```
+
+**Cursor**(`.cursor/mcp.json`)/ **Continue** / 其他兼容 MCP 的客户端:
+
+```json
+{
+  "mcpServers": {
+    "serverops": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer <TOKEN>" }
+    }
+  }
+}
+```
+
+> 不同客户端版本字段名略有差异(`url` / `serverUrl` / 是否需要 `transport: "http"`),
+> 按报错微调即可。
+
+**curl 手动验证:**
+
+```bash
+# 1) initialize 握手
+curl -X POST https://mcp.example.com/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer $SERVEROPS_HTTP_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize",
+       "params":{"protocolVersion":"2025-06-18","capabilities":{},
+                 "clientInfo":{"name":"curl","version":"1"}}}'
+# 不带 / 带错 Token → 401 Unauthorized
+```
+
+**Python 客户端**(基于 FastMCP 的 Client):
+
+```python
+import asyncio
+from fastmcp import Client
+
+async def main():
+    async with Client("https://mcp.example.com/mcp",
+                      auth="<TOKEN>") as client:
+        tools = await client.list_tools()
+        print([t.name for t in tools])
+
+        result = await client.call_tool("connection_list", {})
+        print(result.data)
+
+asyncio.run(main())
+```
+
+### 安全清单
+
+| 项 | 要求 | 说明 |
+|---|---|---|
+| Bearer Token | **必设** | 留空则 HTTP 完全无鉴权(仅 Token 非空时才挂 `StaticTokenVerifier`) |
+| TLS | **必开** | Token 明文走 HTTP 会被嗅探 |
+| 绑定地址 | 生产绑 `127.0.0.1` | 对外暴露交给反向代理 |
+| `/health` | 可对外暴露 | 独立路由,不走鉴权,只返回 `{"status":"ok"}`,适合探活 |
+| 审计日志 | 开启 | `settings.audit_log` 记录每次写操作(见[安全模型](#安全模型)) |
+| 只读开关 | 高危连接设 `read_only: true` | 受只读约束的写操作会被拦截 |
+| Token 轮换 | 多实例用 `SERVEROPS_HTTP_TOKEN_ENV` 区分 | 按用途 / 按客户端隔离 |
+
+---
+
 ## 接入客户端
 
 ### Claude Code(项目级 `.mcp.json`)
@@ -324,46 +520,8 @@ python -m serverops --transport http
 
 ### HTTP 模式接入
 
-服务端启动后,任何兼容 MCP 的客户端都能连到 `http://host:8000/mcp`。
-
-**curl 手动测试**(需要 Token 时加 `Authorization` 头):
-
-```bash
-# 1) 初始化握手
-curl -X POST http://127.0.0.1:8000/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer $SERVEROPS_HTTP_TOKEN" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize",
-       "params":{"protocolVersion":"2025-06-18","capabilities":{},
-                 "clientInfo":{"name":"curl","version":"1"}}}'
-
-# 2) 列出工具
-curl -X POST http://127.0.0.1:8000/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer $SERVEROPS_HTTP_TOKEN" \
-  -H "Mcp-Session-Id: <上一步返回的 session id>" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"notifications/initialized"}'
-```
-
-**Python 客户端**(用 FastMCP 的 Client):
-
-```python
-import asyncio
-from fastmcp import Client
-
-async def main():
-    async with Client("http://127.0.0.1:8000/mcp",
-                      auth="my-bearer-token") as client:
-        tools = await client.list_tools()
-        print([t.name for t in tools])
-
-        result = await client.call_tool("connection_list", {})
-        print(result.data)
-
-asyncio.run(main())
-```
+远程 / 多端 HTTP 接入(常驻服务、反向代理 + TLS、各客户端配置、curl 与 Python 客户端示例)
+见上文 [HTTP 部署(供多端共用)](#http-部署供多端共用)。
 
 ---
 
