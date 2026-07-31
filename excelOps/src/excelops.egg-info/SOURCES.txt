@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+src/excelops/__init__.py
+src/excelops.egg-info/PKG-INFO
+src/excelops.egg-info/SOURCES.txt
+src/excelops.egg-info/dependency_links.txt
+src/excelops.egg-info/requires.txt
+src/excelops.egg-info/top_level.txt
+src/excelops/backends/__init__.py

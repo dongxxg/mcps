@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "excelops"
+version = "0.1.0"
+description = "Pure-Python library for reading, analyzing, and writing Excel xlsx workbooks (read -> analyze -> write)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "excelOps contributors" }]
+keywords = ["excel", "xlsx", "openpyxl", "duckdb", "etl"]
+# Core deps are pure-Python and stable across versions; read + write never
+# need the heavy analyze engine.
+dependencies = [
+    "openpyxl>=3.1",
+    "xlsxwriter>=3.1",
+]
+
+[project.optional-dependencies]
+# Analyze engine uses embedded DuckDB (C extension) + pyarrow for zero-copy
+# SheetData -> table registration. Users who only read/write skip this extra.
+duckdb = [
+    "duckdb>=1.0",
+    "pyarrow>=15.0",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+# Phase 1 ships a library only — no MCP server entry point (deliberately, per
+# the proposal: FastMCP is deferred to a later change).
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
