@@ -17,6 +17,10 @@ node_modules/
 coverage/
 __pycache__/
 *.pyc
+# Local virtualenvs (per-developer, not committed)
+.venv/
+venv/
+env/
 .env.local
 .env.test
 .env.prod
@@ -27,7 +31,6 @@ outputs/
 /.settings/
 /.project
 /.pydevproject
-.claude/
 .codex/
 .codex-plugin/
 .codebuddy/
@@ -57,4 +60,7 @@ outputs/
 .harness/.framework-edit
 .harness/.push-challenge
 .harness/.push-approved
+.codegraph.idea/
+.qoder/
+.qoder-plugin/
 .codegraph
