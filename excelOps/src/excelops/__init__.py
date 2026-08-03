@@ -14,16 +14,23 @@ succeeds even when only the pure-Python core is installed.
 """
 
 from .backends.analyzer import Analyzer
-from .backends.models import SheetData, SheetMeta, WriteResult
+from .backends.merger import merge_workbook
+from .backends.models import MergeResult, SheetData, SheetMeta, WriteResult
 from .backends.reader import list_sheets, read_sheet, sheet_meta
 from .backends.writer import write_workbook
 from .errors import (
     AnalyzeError,
+    CombineError,
     ExcelOpsError,
     FileLocked,
+    LookupError,
+    MergeError,
     MissingDependency,
+    OpsError,
+    ProjectError,
     ReadError,
     SafetyError,
+    TransformError,
     UnsupportedFormat,
     WriteError,
 )
@@ -36,6 +43,7 @@ __all__ = [
     "SheetData",
     "SheetMeta",
     "WriteResult",
+    "MergeResult",
     # read
     "list_sheets",
     "read_sheet",
@@ -44,13 +52,21 @@ __all__ = [
     "Analyzer",
     # write
     "write_workbook",
+    # merge
+    "merge_workbook",
     # errors
     "ExcelOpsError",
+    "OpsError",
     "ReadError",
     "WriteError",
     "AnalyzeError",
     "UnsupportedFormat",
     "FileLocked",
+    "MergeError",
     "MissingDependency",
     "SafetyError",
+    "CombineError",
+    "LookupError",
+    "ProjectError",
+    "TransformError",
 ]

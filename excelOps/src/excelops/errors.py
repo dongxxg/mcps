@@ -38,3 +38,31 @@ class MissingDependency(ExcelOpsError):
 
 class SafetyError(ExcelOpsError):
     """An operation was blocked by the safety layer (placeholder — Phase 2)."""
+
+
+class MergeError(ExcelOpsError):
+    """Merging two xlsx workbooks failed (missing file, invalid format, ...)."""
+
+
+class OpsError(ExcelOpsError):
+    """Base class for all errors raised by the ``ops`` business-operation layer.
+
+    Subclassed by ``CombineError``, ``LookupError``, ``ProjectError``, and
+    ``TransformError`` so callers can narrow or broad-brush as needed.
+    """
+
+
+class CombineError(OpsError):
+    """A ``union`` / ``combine_reports`` operation failed (empty input, unknown column, ...)."""
+
+
+class LookupError(OpsError):
+    """A ``lookup`` / ``lookup_product`` operation failed (no match with ``on_missing="error"``)."""
+
+
+class ProjectError(OpsError):
+    """A ``project`` / ``project_columns`` operation failed (requested column not found)."""
+
+
+class TransformError(OpsError):
+    """A ``transform_tables`` / ``calc_shelf_life`` operation failed (bad rule, unparseable value, ...)."""
