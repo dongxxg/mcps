@@ -36,6 +36,23 @@ class SheetMeta:
 
 
 @dataclass(frozen=True)
+class MergeResult:
+    """Outcome of a merge operation (returned by ``merge_workbook``).
+
+    Attributes:
+        path: Final output path of the merged workbook.
+        bytes_written: Size of the written file in bytes.
+        rows_written: Total data rows written across all sheets.
+        sheets: Names of all sheets in the merged workbook.
+    """
+
+    path: Path
+    bytes_written: int
+    rows_written: int
+    sheets: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class WriteResult:
     """Outcome of a write operation (returned by ``write_workbook``).
 

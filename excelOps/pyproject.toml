@@ -16,6 +16,7 @@ keywords = ["excel", "xlsx", "openpyxl", "duckdb", "etl"]
 dependencies = [
     "openpyxl>=3.1",
     "xlsxwriter>=3.1",
+    "structlog>=24.0",
 ]
 
 [project.optional-dependencies]
