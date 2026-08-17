@@ -4,8 +4,9 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/excelOps/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serverOps/src" isTestSource="false" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.14" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.12" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

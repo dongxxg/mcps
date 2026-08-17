@@ -1,5 +1,6 @@
 openpyxl>=3.1
 xlsxwriter>=3.1
+structlog>=24.0
 
 [dev]
 pytest>=8.0

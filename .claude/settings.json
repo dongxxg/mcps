@@ -47,16 +47,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-tool-use-git-guard.sh || true; }"
+            "command": "bash -c \"[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-tool-use-git-guard.sh || true; }\""
           },
           {
             "type": "command",
-            "command": "[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-tool-use-tasks-guard.sh || true; }"
+            "command": "bash -c \"[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-tool-use-tasks-guard.sh || true; }\""
           },
           {
             "type": "command",
             "if": "Bash(git commit *)",
-            "command": "[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-commit-state-check.sh || true; }"
+            "command": "bash -c \"[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-commit-state-check.sh || true; }\""
           }
         ]
       },
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-tool-use-memory-route-guard.sh || true; }"
+            "command": "bash -c \"[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-tool-use-memory-route-guard.sh || true; }\""
           }
         ]
       },
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-tool-use-memory-route-guard.sh || true; }"
+            "command": "bash -c \"[ -f .harness/.framework-edit ] || { [ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/pre-tool-use-memory-route-guard.sh || true; }\""
           }
         ]
       },
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/shared/pre-tool-use-agent-timestamp.sh || true"
+            "command": "bash -c \".claude/hooks/shared/pre-tool-use-agent-timestamp.sh || true\""
           }
         ]
       }
@@ -94,11 +94,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/session-start.sh || true"
+            "command": "bash -c \"[ -f .claude/reference/harness-rules.md ] && .claude/hooks/shared/session-start.sh || true\""
           },
           {
             "type": "command",
-            "command": "[ -f .claude/tools/scripts/maintenance/cleanup-orphan-worktrees.mjs ] && node .claude/tools/scripts/maintenance/cleanup-orphan-worktrees.mjs --quiet || true"
+            "command": "bash -c \"[ -f .claude/tools/scripts/maintenance/cleanup-orphan-worktrees.mjs ] && node .claude/tools/scripts/maintenance/cleanup-orphan-worktrees.mjs --quiet || true\""
           }
         ]
       }
@@ -109,7 +109,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -f .claude/hooks/shared/check-upgrade-prompt.sh ] && .claude/hooks/shared/check-upgrade-prompt.sh || true"
+            "command": "bash -c \"[ -f .claude/hooks/shared/check-upgrade-prompt.sh ] && .claude/hooks/shared/check-upgrade-prompt.sh || true\""
           }
         ]
       }
@@ -120,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/shared/post-tool-use-agent-usage.sh || true"
+            "command": "bash -c \".claude/hooks/shared/post-tool-use-agent-usage.sh || true\""
           }
         ]
       }
