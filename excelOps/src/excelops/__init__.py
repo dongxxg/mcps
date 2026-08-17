@@ -30,10 +30,12 @@ from .errors import (
     ProjectError,
     ReadError,
     SafetyError,
+    SearchError,
     TransformError,
     UnsupportedFormat,
     WriteError,
 )
+from .search import search_files
 
 __version__ = "0.1.0"
 
@@ -68,5 +70,8 @@ __all__ = [
     "CombineError",
     "LookupError",
     "ProjectError",
+    "SearchError",
     "TransformError",
+    # search
+    "search_files",
 ]

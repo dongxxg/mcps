@@ -60,6 +60,10 @@ class LookupError(OpsError):
     """A ``lookup`` / ``lookup_product`` operation failed (no match with ``on_missing="error"``)."""
 
 
+class SearchError(ExcelOpsError):
+    """A cross-file search operation failed (missing directory, invalid conditions, ...)."""
+
+
 class ProjectError(OpsError):
     """A ``project`` / ``project_columns`` operation failed (requested column not found)."""
 
