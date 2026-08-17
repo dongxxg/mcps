@@ -18,15 +18,39 @@
 
 ### Requirement: 优先级字段-值匹配
 
-系统 SHALL 按 `conditions` 列表的顺序依次尝试匹配，第一个命中即停止（high-priority wins）。默认精确匹配（exact），不隐式类型转换。
+系统 SHALL 按 `conditions` 列表的顺序依次尝试匹配，第一个命中即停止（high-priority wins）。
 
-#### Scenario: 高优先级字段命中
+**匹配模式**：支持两种模式——
+- `exact`（默认）：类型保真 `==` 比较，不隐式类型转换
+- `contains`：区分大小写子串匹配，两侧必须均为字符串
+
+**模式指定方式**：
+- `mode` 参数设置全局默认模式
+- 条件元组支持 2 元素 `(field, value)`（用全局默认）或 3 元素 `(field, value, mode)`（逐条件覆盖）
+
+#### Scenario: 高优先级字段命中（exact）
 - **WHEN** `conditions=[("编码", "A001"), ("条码", "6901234")]`，某行编码="A001"
 - **THEN** 该行通过"编码"字段命中，`__match_field__`="编码"，`__priority__`=0
 
 #### Scenario: 高优先级未命中，低优先级命中
 - **WHEN** `conditions=[("编码", "A001"), ("条码", "6901234")]`，某行编码="B002" 但条码="6901234"
 - **THEN** 该行通过"条码"字段命中，`__match_field__`="条码"，`__priority__`=1
+
+#### Scenario: contains 模式子串匹配
+- **WHEN** `conditions=[("名称", "牛奶", "contains")]`，某行名称="纯牛奶 250ml"
+- **THEN** 该行通过"名称"字段命中（"牛奶" 是 "纯牛奶 250ml" 的子串）
+
+#### Scenario: contains 模式非字符串不匹配
+- **WHEN** `conditions=[("条码", "12", "contains")]`，某行条码=123（数字）
+- **THEN** 不匹配（类型保真，数字单元格不参与子串匹配）
+
+#### Scenario: contains 模式不区分大小写
+- **WHEN** `conditions=[("名称", "abc", "contains")]`，某行名称="ABC"
+- **THEN** 匹配成功（不区分大小写，"abc" 是 "ABC" 的子串）
+
+#### Scenario: 逐条件覆盖模式
+- **WHEN** `conditions=[("编码", "A001"), ("名称", "牛奶", "contains")]`，`mode="exact"`（全局默认）
+- **THEN** "编码" 用 exact 匹配，"名称" 用 contains 匹配（逐条件覆盖）
 
 #### Scenario: 所有条件均未命中
 - **WHEN** 某行的所有条件字段值均不匹配
