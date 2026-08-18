@@ -1,0 +1,1 @@
+"""GUI-specific data models."""

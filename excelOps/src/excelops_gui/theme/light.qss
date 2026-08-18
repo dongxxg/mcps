@@ -1,0 +1,24 @@
+/* excelOps light theme — Google Sheets / Notion feel.
+ * Palette: white #FFFFFF, surface #F5F5F5, border #E0E0E0, primary #1A73E8.
+ * Applied programmatically from excelops_gui.theme.apply_theme().
+ */
+QMainWindow { background-color: #FFFFFF; }
+QPushButton {
+    background-color: #FFFFFF; border: 1px solid #E0E0E0;
+    border-radius: 4px; padding: 6px 12px; color: #333333;
+}
+QPushButton:hover { background-color: #E8F0FE; border-color: #1A73E8; }
+QPushButton:pressed { background-color: #D2E3FC; }
+QLineEdit { border: 1px solid #E0E0E0; border-radius: 4px; padding: 4px 6px; }
+QLineEdit:focus { border-color: #1A73E8; }
+QTreeView, QTableView {
+    background-color: #FFFFFF; alternate-row-color: #FAFAFA;
+    gridline-color: #E0E0E0; outline: none;
+}
+QHeaderView::section {
+    background-color: #F5F5F5; border: 1px solid #E0E0E0;
+    padding: 6px; font-weight: bold;
+}
+QTabBar::tab { padding: 6px 14px; }
+QTabBar::tab:selected { color: #1A73E8; font-weight: bold; }
+QStatusBar { background-color: #FAFAFA; border-top: 1px solid #E0E0E0; }

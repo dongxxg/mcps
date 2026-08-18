@@ -29,6 +29,10 @@ duckdb = [
 dev = [
     "pytest>=8.0",
     "ruff>=0.5",
+    "pytest-qt>=4.4",
+]
+gui = [
+    "pyside6>=6.6,<6.7",
 ]
 
 # Phase 1 ships a library only — no MCP server entry point (deliberately, per
@@ -36,6 +40,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["excelops*"]
 
 [tool.ruff]
 line-length = 100
