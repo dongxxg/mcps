@@ -280,20 +280,53 @@ def _match(cell: Any, value: Any, mode: str) -> bool:
 
 
 def _values_equal(a: Any, b: Any) -> bool:
-    """Type-faithful equality — Python native ``==``."""
-    return a == b
+    """Type-adaptive equality.
+
+    Default behaviour is Python-native ``==``. But when one side is a string
+    and the other is numeric (int/float, excluding bool), the string is
+    coerced to the numeric type and compared. This covers the common
+    UI-driven case where user input is always a ``str`` but the Excel cell
+    stores an ``int`` — ``_values_equal(100106403, "100106403")`` returns
+    ``True``.
+
+    Conversion failures fall back to native ``==`` (which will be ``False``).
+    """
+    if a == b:
+        return True
+    return _numeric_coerce_compare(a, b)
 
 
 def _values_contains(cell: Any, value: Any) -> bool:
     """Case-insensitive substring: ``value.lower() in cell.lower()``.
 
-    Both *cell* and *value* must be strings. Non-string cells never match
-    (type-faithful: no implicit ``str()`` coercion). Comparison is
-    case-insensitive for usability — ``"abc"`` matches ``"ABC 123"``.
+    Always stringifies both sides so numeric/date cells can be matched by
+    text — the GUI search input is always a string.
     """
-    if not isinstance(cell, str) or not isinstance(value, str):
+    return str(value).lower() in str(cell).lower()
+
+
+def _numeric_coerce_compare(a: Any, b: Any) -> bool:
+    """Attempt type-adaptive numeric comparison between *a* and *b*.
+
+    When one side is a string and the other is numeric, coerce the string
+    to the numeric type and retry ``==``. Bool is treated as non-numeric
+    (Python bool is an int subclass — explicit guard). Returns ``False``
+    when coercion is not applicable or fails.
+    """
+    if isinstance(a, bool) or isinstance(b, bool):
         return False
-    return value.lower() in cell.lower()
+    # str vs (int|float): convert the string side to the numeric side's type.
+    if isinstance(a, str) and isinstance(b, (int, float)):
+        try:
+            return a == str(b) or type(b)(a) == b
+        except (ValueError, TypeError):
+            return False
+    if isinstance(b, str) and isinstance(a, (int, float)):
+        try:
+            return b == str(a) or type(a)(b) == a
+        except (ValueError, TypeError):
+            return False
+    return False
 
 
 def _scan_sheet(

@@ -43,11 +43,14 @@ class CellDelegate(QStyledItemDelegate):
         option: Any,
         index: QModelIndex,
     ) -> None:
-        # Highlight provenance columns (search result traceability)
-        col_name = self._columns[index.column()] if index.column() < len(self._columns) else ""
+        if index.column() >= len(self._columns):
+            super().paint(painter, option, index)
+            return
+
+        col_name = self._columns[index.column()]
         if col_name in _PROVENANCE:
             painter.save()
-            painter.setBrush(QColor("#FFF8E1"))  # subtle amber tint
+            painter.setBrush(QColor("#FFF8E1"))
             painter.drawRect(option.rect)
             painter.restore()
 

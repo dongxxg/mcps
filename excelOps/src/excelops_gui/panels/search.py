@@ -198,13 +198,43 @@ class SearchPanel(BasePanel):
         target_val = value_text
         is_contains = mode == "contains"
 
+        def _coerce(val: str, cell: object) -> object | None:
+            """将用户输入转为与单元格同类型，用于精确比较。
+
+            openpyxl 保留原生单元格类型（int / float / date），用户输入永远是
+            str；返回转换后的值用于 ``cell == result``，失败则返回 None
+            表示不匹配。
+
+            bool 优先于 int 判断（Python 中 bool 是 int 的子类）。
+            """
+            if isinstance(cell, bool):
+                if val.lower() in ("true", "1", "yes"):
+                    return True
+                if val.lower() in ("false", "0", "no"):
+                    return False
+                return None
+            if isinstance(cell, int):
+                try:
+                    return int(val)
+                except (ValueError, TypeError):
+                    return None
+            if isinstance(cell, float):
+                try:
+                    return float(val)
+                except (ValueError, TypeError):
+                    return None
+            return cell
+
         def predicate(row_dict: dict) -> bool:
             cell = row_dict.get(target_col)
+            if cell is None:
+                return False
             if is_contains:
-                return isinstance(cell, str) and isinstance(target_val, str) and (
-                    target_val.lower() in cell.lower()
-                )
-            return cell == target_val
+                return target_val.lower() in str(cell).lower()
+            typed_val = _coerce(target_val, cell)
+            if typed_val is None:
+                return False
+            return cell == typed_val
 
         result_sd = filter(ctx.sheet_data, predicate)
         return PanelResult(sheet_data=result_sd, message=f"匹配 {len(result_sd.rows)} 行")

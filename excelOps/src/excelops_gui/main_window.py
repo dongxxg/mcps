@@ -43,6 +43,9 @@ class MainWindow(QMainWindow):
         self._active_sheet: str | None = None
         self._current_sheet_data: SheetData | None = None
         self._panels: dict[str, object] = {}
+        self._load_worker = None
+        self._search_worker = None
+        self._export_worker = None
 
         self._toolbar = self._build_toolbar()
         self._splitter = self._build_splitter()
@@ -141,12 +144,19 @@ class MainWindow(QMainWindow):
         self._active_sheet = sheet_name
         self._file_label.setText(f"{Path(file_path).name} / {sheet_name}")
         self._status_label.setText(f"加载 {sheet_name}...")
+        self._data_table.append_log(
+            f"加载 {Path(file_path).name} / {sheet_name}"
+        )
 
-        worker = LoadSheetWorker(file_path, sheet_name)
-        worker.progress.connect(self._on_load_progress)
-        worker.result.connect(self._on_sheet_loaded)
-        worker.error.connect(self._on_error)
-        worker.start()
+        self._load_worker = LoadSheetWorker(file_path, sheet_name)
+        self._load_worker.setParent(self)
+        self._load_worker.progress.connect(self._on_load_progress)
+        self._load_worker.result.connect(self._on_sheet_loaded)
+        self._load_worker.error.connect(self._on_error)
+        self._load_worker.finished.connect(
+            lambda: setattr(self, "_load_worker", None)
+        )
+        self._load_worker.start()
 
     def _on_load_progress(self, percent: int, message: str) -> None:
         self._progress.setVisible(True)
@@ -157,6 +167,9 @@ class MainWindow(QMainWindow):
         self._progress.setVisible(False)
         self._current_sheet_data = sheet_data
         self._data_table.set_data(sheet_data)
+        self._data_table.append_log(
+            f"已加载 {len(sheet_data.rows)} 行", level="OK"
+        )
         search_panel = self._panels.get("search")
         if isinstance(search_panel, SearchPanel):
             search_panel.set_columns(sheet_data.columns)
@@ -184,11 +197,17 @@ class MainWindow(QMainWindow):
         )
         self._status_label.setText("搜索中...")
         self._data_table.table_view.setEnabled(False)
-        worker = SearchWorker(search_panel, ctx)
-        worker.progress.connect(self._on_search_progress)
-        worker.result.connect(self._on_search_result)
-        worker.error.connect(self._on_search_error)
-        worker.start()
+        self._data_table.append_log("开始搜索")
+
+        self._search_worker = SearchWorker(search_panel, ctx)
+        self._search_worker.setParent(self)
+        self._search_worker.progress.connect(self._on_search_progress)
+        self._search_worker.result.connect(self._on_search_result)
+        self._search_worker.error.connect(self._on_search_error)
+        self._search_worker.finished.connect(
+            lambda: setattr(self, "_search_worker", None)
+        )
+        self._search_worker.start()
 
     def _on_search_progress(self, percent: int, message: str) -> None:
         self._progress.setVisible(True)
@@ -205,9 +224,11 @@ class MainWindow(QMainWindow):
             search_panel = self._panels.get("search")
             if isinstance(search_panel, SearchPanel):
                 search_panel._status_label.setText(result.message)
+            self._data_table.append_log(result.message, level="OK")
             self._status_label.setText(result.message)
         else:
             self._status_label.setText("就绪")
+            self._data_table.append_log("搜索完成（无结果）")
 
     def _on_search_error(self, error: str) -> None:
         self._progress.setVisible(False)
@@ -215,6 +236,7 @@ class MainWindow(QMainWindow):
         search_panel = self._panels.get("search")
         if isinstance(search_panel, SearchPanel):
             search_panel._status_label.setText(f"错误: {error}")
+        self._data_table.append_log(f"搜索失败: {error}", level="ERROR")
         self._status_label.setText(f"搜索失败: {error}")
 
     def _on_add_dir_condition(self) -> None:
@@ -272,19 +294,32 @@ class MainWindow(QMainWindow):
 
         self._status_label.setText("导出中...")
         self._progress.setVisible(True)
-        worker = ExportWorker(sd, path, "结果")
-        worker.progress.connect(
+        self._data_table.append_log(f"导出到 {Path(path).name}")
+
+        self._export_worker = ExportWorker(sd, path, "结果")
+        self._export_worker.setParent(self)
+        self._export_worker.progress.connect(
             lambda p, m: (self._progress.setValue(p), self._status_label.setText(m))
         )
-        worker.result.connect(
-            lambda r: self._status_label.setText(f"导出完成: {r.rows_written} 行")
+        self._export_worker.result.connect(
+            lambda r: (
+                self._data_table.append_log(f"导出完成: {r.rows_written} 行", level="OK"),
+                self._status_label.setText(f"导出完成: {r.rows_written} 行"),
+            )
         )
-        worker.error.connect(
-            lambda e: self._status_label.setText(f"导出失败: {e}")
+        self._export_worker.error.connect(
+            lambda e: (
+                self._data_table.append_log(f"导出失败: {e}", level="ERROR"),
+                self._status_label.setText(f"导出失败: {e}"),
+            )
         )
-        worker.start()
+        self._export_worker.finished.connect(
+            lambda: setattr(self, "_export_worker", None)
+        )
+        self._export_worker.start()
 
     def _on_error(self, error: str) -> None:
         self._progress.setVisible(False)
+        self._data_table.append_log(error, level="ERROR")
         self._status_label.setText(f"错误: {error}")
         QMessageBox.warning(self, "错误", error)
