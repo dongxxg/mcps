@@ -61,8 +61,10 @@ def test_values_equal_int_float_python_native() -> None:
 
 
 def test_values_equal_int_str_not_equal() -> None:
-    # Type-faithful: int and str with same digits are NOT equal.
-    assert _values_equal(123, "123") is False
+    # Numeric coercion: str digits equal to an int match (GUI input is always str).
+    assert _values_equal(123, "123") is True
+    # Non-numeric strings still do not match.
+    assert _values_equal(123, "abc") is False
 
 
 def test_values_equal_none() -> None:
@@ -88,11 +90,12 @@ def test_values_contains_case_insensitive() -> None:
     assert _values_contains("纯牛奶", "牛奶") is True
 
 
-def test_values_contains_non_string_never_matches() -> None:
-    # Type-faithful: non-string cells never match contains.
-    assert _values_contains(123, "12") is False
-    assert _values_contains(None, "x") is False
+def test_values_contains_numeric_coerced_to_string() -> None:
+    # contains always stringifies both sides so numeric cells can be
+    # matched by text (GUI search input is always a str).
+    assert _values_contains(123, "12") is True
     assert _values_contains("abc", 123) is False
+    assert _values_contains(None, "x") is False
 
 
 # ─── _normalize_conditions ──────────────────────────────────────────────────
@@ -189,10 +192,13 @@ def test_match_rows_contains_priority_fallback() -> None:
     assert hits[1] == (("A001", "面包"), 0, "编码")
 
 
-def test_match_rows_contains_non_string_no_match() -> None:
+def test_match_rows_contains_numeric_coerced() -> None:
+    # contains stringifies both sides, so numeric cells can be text-matched.
     sd = _sd(["条码"], [(123,)])
     hits = _match_rows(sd, [("条码", "12", "contains")])
-    assert hits == []
+    assert len(hits) == 1
+    assert hits[0][0] == (123,)
+    assert hits[0][2] == "条码"
 
 
 # ─── search_files — integration ─────────────────────────────────────────────

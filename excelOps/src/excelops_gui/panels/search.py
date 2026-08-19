@@ -206,6 +206,8 @@ class SearchPanel(BasePanel):
             表示不匹配。
 
             bool 优先于 int 判断（Python 中 bool 是 int 的子类）。
+            str 单元格不做转换，直接返回用户输入做原生 ``==``——
+            否则会退化为 cell == cell 恒真，导致所有字符串单元格都被误匹配。
             """
             if isinstance(cell, bool):
                 if val.lower() in ("true", "1", "yes"):
@@ -223,7 +225,9 @@ class SearchPanel(BasePanel):
                     return float(val)
                 except (ValueError, TypeError):
                     return None
-            return cell
+            if isinstance(cell, str):
+                return val  # str vs str: 原生 ==，不做转换
+            return None
 
         def predicate(row_dict: dict) -> bool:
             cell = row_dict.get(target_col)
@@ -267,7 +271,7 @@ class SearchPanel(BasePanel):
             if not col or not val or not mode:
                 continue
             conditions.append((
-                col.widget().currentText(),
+                col.widget().text(),
                 val.widget().text(),
                 "contains" if mode.widget().currentIndex() == 1 else "exact",
             ))

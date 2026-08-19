@@ -249,9 +249,8 @@ class MainWindow(QMainWindow):
         row_layout.setContentsMargins(0, 0, 0, 0)
         row_layout.setSpacing(4)
 
-        col_combo = QComboBox()
-        cols = self._current_sheet_data.columns if self._current_sheet_data else ()
-        col_combo.addItems(list(cols))
+        col_input = QLineEdit()
+        col_input.setPlaceholderText("输入字段名")
         val_input = QLineEdit()
         mode_combo = QComboBox()
         mode_combo.addItems(["精确", "模糊"])
@@ -259,7 +258,7 @@ class MainWindow(QMainWindow):
         del_btn.setFixedWidth(28)
         del_btn.clicked.connect(lambda: row.setParent(None))
 
-        row_layout.addWidget(col_combo)
+        row_layout.addWidget(col_input)
         row_layout.addWidget(val_input)
         row_layout.addWidget(mode_combo)
         row_layout.addWidget(del_btn)
