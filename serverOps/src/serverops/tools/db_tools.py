@@ -6,8 +6,10 @@ Named parameters are used for SQL substitution (cross-driver safe):
 
 from __future__ import annotations
 
+import asyncio
+
 from ..errors import ServerOpsError
-from ..models import DATABASE_KINDS
+from ..models import DATABASE_KINDS, QUERY_MAX_ROWS_CAP
 from ._common import redacted
 
 
@@ -22,27 +24,86 @@ def register(mcp, registry) -> None:
 
     @mcp.tool
     @redacted
-    async def db_query(connection: str, sql: str, params: dict | None = None) -> dict:
+    async def db_query(
+        connection: str,
+        sql: str,
+        params: dict | None = None,
+        max_rows: int | None = None,
+        timeout_s: float | None = None,
+    ) -> dict:
         """Run a read-only query on a database connection.
 
         The statement always runs inside a transaction that is rolled back, so an
         accidental write has no effect. Use named params (``:name``) in ``sql`` with
         matching keys in ``params``. For Redis connections, pass a single command in
-        ``sql`` (e.g. ``"GET mykey"``); ``params`` is ignored.
+        ``sql`` (e.g. ``"GET mykey"``); ``params`` is ignored — only read-only Redis
+        commands (GET/SCAN/TTL/...) are allowed in read-only mode.
+
+        Rows are capped: ``max_rows`` overrides the configured ``query_max_rows``
+        (default 200, hard cap 2000). ``truncated`` reports whether more rows
+        existed beyond the cap; raise ``max_rows`` or add a WHERE/LIMIT clause
+        instead of pulling unbounded results into the conversation. A query that
+        exceeds ``timeout_s`` (default 30s) is cancelled, audited, and its cached
+        connection is dropped.
         """
         profile = _require_db(connection)
-        connector = await registry.get(connection)
+        if profile.kind == "elasticsearch":
+            raise ServerOpsError(
+                "db_query is not supported for Elasticsearch; use es_search / es_get / es_indices."
+            )
+
+        effective_max = registry.settings.query_max_rows if max_rows is None else max_rows
+        if not 1 <= effective_max <= QUERY_MAX_ROWS_CAP:
+            raise ServerOpsError(
+                f"max_rows must be between 1 and {QUERY_MAX_ROWS_CAP} (got {effective_max})."
+            )
+        effective_timeout = (
+            registry.settings.query_timeout_s if timeout_s is None else timeout_s
+        )
+        if effective_timeout <= 0:
+            raise ServerOpsError(
+                f"timeout_s must be positive (got {effective_timeout})."
+            )
+
+        async def _with_timeout(coro):
+            try:
+                return await asyncio.wait_for(coro, timeout=effective_timeout)
+            except (asyncio.TimeoutError, TimeoutError):
+                registry.audit.record(
+                    connection=connection,
+                    operation="db_query",
+                    status="timeout",
+                    detail=sql[:200],
+                )
+                await registry.invalidate(connection)  # connection may be stuck
+                raise ServerOpsError(
+                    f"db_query timed out after {effective_timeout}s; the cached "
+                    "connection was dropped — retry to reconnect."
+                ) from None
+
         if profile.kind == "redis":
-            value = await connector.redis_command(*sql.split())
+            registry.safety.check_redis_command(profile.read_only, sql)
+            connector = await registry.get(connection)
+            value = await _with_timeout(connector.redis_command(*sql.split()))
             registry.audit.record(
                 connection=connection, operation="db_query", status="ok", detail=sql[:200]
             )
             return {"value": value}
-        columns, rows = await connector.query(sql, params)
+
+        connector = await registry.get(connection)
+        columns, rows, truncated = await _with_timeout(
+            connector.query(sql, params, limit=effective_max)
+        )
         registry.audit.record(
             connection=connection, operation="db_query", status="ok", detail=sql[:200]
         )
-        return {"columns": columns, "rows": rows, "row_count": len(rows)}
+        return {
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+            "truncated": truncated,
+            "max_rows": effective_max,
+        }
 
     @mcp.tool
     @redacted

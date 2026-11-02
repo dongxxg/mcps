@@ -241,9 +241,20 @@ async def test_connect_passes_url_params_and_close(fake_ch: _FakeCHClient) -> No
 async def test_query_returns_columns_and_rows(fake_ch: _FakeCHClient) -> None:
     conn = await _ck()
     fake_ch.set("SELECT count(*) AS n FROM events", ["n"], [[42]])
-    cols, rows = await conn.query("SELECT count(*) AS n FROM events")
+    cols, rows, _truncated = await conn.query("SELECT count(*) AS n FROM events")
     assert cols == ["n"]
     assert rows == [[42]]
+    await conn.close()
+
+
+async def test_query_slices_rows_client_side(fake_ch: _FakeCHClient) -> None:
+    conn = await _ck()
+    fake_ch.set("SELECT id FROM t", ["id"], [[i] for i in range(10)])
+    cols, rows, truncated = await conn.query("SELECT id FROM t", limit=3)
+    assert cols == ["id"]
+    assert rows == [[0], [1], [2]]
+    assert truncated is True
+    assert len(fake_ch.queries) == 1  # sliced locally, no second round-trip
     await conn.close()
 
 
@@ -302,7 +313,13 @@ async def test_tool_query_tables_schema(fake_ch: _FakeCHClient, fake_mcp) -> Non
     db_tools.register(fake_mcp, reg)
     fake_ch.set("SELECT 1", ["1"], [[1]])
     result = await fake_mcp.tools["db_query"]("ck", "SELECT 1")
-    assert result == {"columns": ["1"], "rows": [[1]], "row_count": 1}
+    assert result == {
+        "columns": ["1"],
+        "rows": [[1]],
+        "row_count": 1,
+        "truncated": False,
+        "max_rows": 200,
+    }
     tables = await fake_mcp.tools["db_tables"]("ck")
     assert tables == {"tables": ["events", "users"]}
     schema = await fake_mcp.tools["db_schema"]("ck", "users")

@@ -97,6 +97,18 @@ class ConnectorRegistry:
             raise MissingDependency(_INSTALL_HINT[profile.kind]) from e
         return module.build(name, profile)
 
+    async def invalidate(self, name: str) -> None:
+        """Close and drop the cached connector for ``name``.
+
+        Used after a timed-out operation: the underlying connection may be
+        stuck in a cancelled state, so the next ``get`` rebuilds it fresh.
+        Unknown names are a no-op.
+        """
+        connector = self._cache.pop(name, None)
+        if connector is not None:
+            with contextlib.suppress(Exception):
+                await connector.close()
+
     async def close_all(self) -> None:
         """Best-effort teardown of every cached connector."""
         for connector in list(self._cache.values()):

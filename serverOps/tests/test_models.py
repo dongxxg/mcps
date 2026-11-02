@@ -53,3 +53,24 @@ def test_settings_default_denylist_present() -> None:
     assert s.ssh_command_denylist
     assert any("rm" in p for p in s.ssh_command_denylist)
     assert s.read_only is False
+
+
+def test_settings_query_max_rows_default_and_cap() -> None:
+    from serverops.models import QUERY_MAX_ROWS_CAP
+
+    assert QUERY_MAX_ROWS_CAP == 2000
+    s = Settings()
+    assert s.query_max_rows == 200
+    with pytest.raises(ValidationError):
+        Settings(query_max_rows=0)  # below ge=1
+    with pytest.raises(ValidationError):
+        Settings(query_max_rows=9999)  # above hard cap
+
+
+def test_settings_query_timeout_default_and_validation() -> None:
+    s = Settings()
+    assert s.query_timeout_s == 30.0
+    with pytest.raises(ValidationError):
+        Settings(query_timeout_s=0)
+    with pytest.raises(ValidationError):
+        Settings(query_timeout_s=-1)

@@ -207,20 +207,39 @@ class DatabaseConnector(AsyncConnector):
 
     # -- SQL operations --------------------------------------------------
 
-    async def query(self, sql: str, params: dict | None = None) -> tuple[list[str], list[list[Any]]]:
-        """Run a statement read-only and return ``(columns, rows)``.
+    async def query(
+        self,
+        sql: str,
+        params: dict | None = None,
+        limit: int | None = None,
+    ) -> tuple[list[str], list[list[Any]], bool]:
+        """Run a statement read-only and return ``(columns, rows, truncated)``.
 
         SQLAlchemy backends execute then ROLLBACK (physically read-only).
         ClickHouse is guarded by ``_require_clickhouse_read`` instead (no
         transaction support), so only SELECT-style statements are accepted.
+
+        When ``limit`` is given, at most ``limit`` rows are returned and
+        ``truncated`` reports whether more rows existed. Rows beyond the limit
+        are deliberately never drained: the rollback (SQLAlchemy) or the
+        dropped cursor discards them, so the query stays read-only.
         """
         if self.is_clickhouse():
             _require_clickhouse_read(sql)
             ch_sql, parameters = _ch_bind_params(sql, params)
-            result = await anyio.to_thread.run_sync(self._ch.query, ch_sql, parameters)
+            # abandon_on_cancel: a cancelled wait must not block until the HTTP
+            # request finishes; the orphaned thread dies with the socket and the
+            # tool layer drops this client afterwards (registry.invalidate).
+            result = await anyio.to_thread.run_sync(
+                self._ch.query, ch_sql, parameters, abandon_on_cancel=True
+            )
             columns = list(result.column_names)
-            rows = [[_json_safe(v) for v in row] for row in result.result_rows]
-            return columns, rows
+            all_rows = result.result_rows
+            truncated = limit is not None and len(all_rows) > limit
+            if limit is not None:
+                all_rows = all_rows[:limit]
+            rows = [[_json_safe(v) for v in row] for row in all_rows]
+            return columns, rows, truncated
 
         from sqlalchemy import text
 
@@ -228,13 +247,18 @@ class DatabaseConnector(AsyncConnector):
             result = await conn.execute(text(sql), params or {})
             returns_rows = getattr(result, "returns_rows", False)
             columns = list(result.keys()) if returns_rows else []
-            rows = (
-                [[_json_safe(v) for v in row] for row in result.fetchall()]
-                if returns_rows
-                else []
-            )
+            fetched: list[Any] = []
+            truncated = False
+            if returns_rows:
+                if limit is not None:
+                    fetched = list(result.fetchmany(limit + 1))
+                    truncated = len(fetched) > limit
+                    fetched = fetched[:limit]
+                else:
+                    fetched = list(result.fetchall())
+            rows = [[_json_safe(v) for v in row] for row in fetched]
             await conn.rollback()  # discard any writes -> query is physically read-only
-        return columns, rows
+        return columns, rows, truncated
 
     async def execute(self, sql: str, params: dict | None = None) -> dict[str, Any]:
         if self.is_clickhouse():

@@ -120,6 +120,31 @@ async def test_unknown_connection_raises_cleanly() -> None:
         await mcp.tools["connection_info"]("nope")  # type: ignore[operator]
 
 
+class TrackingConnector(FakeConnector):
+    """FakeConnector that records close()."""
+
+    closed = False
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+async def test_invalidate_closes_and_uncaches() -> None:
+    reg = _registry_with_web1()
+    reg._build = lambda name, profile: TrackingConnector(name, profile)  # type: ignore[method-assign]
+    first = await reg.get("web1")
+    await reg.invalidate("web1")
+    assert first.closed is True
+    assert "web1" not in reg._cache
+    second = await reg.get("web1")  # rebuilt on next use
+    assert second is not first
+
+
+async def test_invalidate_unknown_name_is_noop() -> None:
+    reg = _registry_with_web1()
+    await reg.invalidate("nope")  # no raise
+
+
 async def test_redacted_wraps_unexpected_errors() -> None:
     @redacted
     async def boom() -> None:

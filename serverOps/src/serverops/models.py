@@ -26,6 +26,10 @@ DEFAULT_SSH_DENYLIST: tuple[str, ...] = (
     r">\s*/dev/sd[a-z]",                   # redirect onto a block device
 )
 
+#: Hard ceiling for ``db_query`` result rows, regardless of configuration —
+#: results flow into the model context, so an unbounded fetch is a hazard.
+QUERY_MAX_ROWS_CAP: int = 2000
+
 
 # ---------------------------------------------------------------------------
 # Connection profiles
@@ -136,6 +140,11 @@ class Settings(BaseModel):
     ssh_command_allowlist: list[str] = Field(default_factory=list)
     #: Path to a JSONL audit log. ``None`` disables auditing.
     audit_log: str | None = None
+    #: Default row cap applied by ``db_query`` (overridable per call up to
+    #: ``QUERY_MAX_ROWS_CAP``).
+    query_max_rows: int = Field(default=200, ge=1, le=QUERY_MAX_ROWS_CAP)
+    #: Default wall-clock timeout for ``db_query`` in seconds.
+    query_timeout_s: float = Field(default=30.0, gt=0)
 
 
 class ServerOpsConfig(BaseModel):
